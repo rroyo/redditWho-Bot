@@ -7,7 +7,7 @@
 #   aquests últims tenen una vida de tan sols 60 minuts i cal regenerar-los.
 #
 #   Data creació:           23/03/2016
-#   Última modificació:     23/03/2016
+#   Última modificació:     24/03/2016
 #
 #	Autor: Ramon Royo
 #	       Treball de fi de grau (UOC)
