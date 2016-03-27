@@ -22,17 +22,18 @@
 #
 #################################################################################
 
-from redditWhoLib import oauth2         # Conté les dades de connexió
-import praw, webbrowser
+from redditWhoLib import loginData              # Dades d'accés
+import praw                                     # Wrapper per l'API
+import webbrowser                               # Interacció amb el navegador
 
 #################################################################################
 # Connexió amb l'API
 #################################################################################
 
-r = praw.Reddit('redditWho script')     # Nova instància de reddit
+r = praw.Reddit('redditWho script')             # Nova instància de reddit
 
 # OAuth2 login
-r.set_oauth_app_info(oauth2.app_id, oauth2.app_secret, oauth2.app_uri)
+r.set_oauth_app_info(loginData.APP_ID, loginData.APP_SECRET, loginData.APP_URI)
 
 #################################################################################
 # 1er objectiu. Autoritzar l'accés de l'app al compte d'usuari
@@ -40,7 +41,7 @@ r.set_oauth_app_info(oauth2.app_id, oauth2.app_secret, oauth2.app_uri)
 
 # Generar URL per autoritzar l'accés al compte de reddit
 # get_authorize_url(state, scopes, token refreshable)
-url = r.get_authorize_url('...',oauth2.app_scopes, True)
+url = r.get_authorize_url('...', loginData.APP_SCOPES, True)
 webbrowser.open(url)
 
 #################################################################################

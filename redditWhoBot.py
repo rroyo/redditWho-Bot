@@ -1,39 +1,103 @@
-# Guia per poder autentificar l'aplicació amb l'API de reddit
-# https://github.com/reddit/reddit/wiki/OAuth2
-# HOW TO
-# https://tsenior.com/2014-01-23-authenticating-with-reddit-oauth
-# https://www.reddit.com/r/redditdev/comments/197x36/using_oauth_to_send_valid_requests/c8lz57u
-
-# Writing a reddit bot - 03 - OAuth 2
-# https://www.youtube.com/watch?v=Uvxu2efXuiY
-
-#Recorda que ne algun moment has instal·lat PRAW, cal reflexar-ho a la memòria
-
 #################################################################################
 #
-#	redditWho bot
+#   Bot per extreure informació de la base de dades de reddit, fent ús de la
+#   seva API.
 #
-#	author: Ramon Royo
-#	for:	Treball de fi de grau (UOC)
+#   
+#   
 #
+#   Data creació:           24/03/2016
+#   Última modificació:     24/03/2016
 #
+#   Autor: Ramon Royo
+#          Treball de fi de grau (UOC)
 #
+#   Fonts consultades:
 #
+#   Writing a reddit bot - 02 - Writing ReplyBot (UPDATED)
+#   https://www.youtube.com/watch?v=keiATJcZE8g
 #
+#   PRAW documentation
+#   https://praw.readthedocs.org/en/stable/
+#    
 #################################################################################
 
-from redditWhoLib import oauth2
-import praw, webbrowser
+import oauth2                           # Connexió amb l'API de reddit
+import dblogin                          # Connexió amb la BBDD
 
-version = '2016.03.22'
+if not(is_oauth_session())              # True si està connectat amb l'API
+    r = oauth2.login()                  # Instància de reddit
 
-# New reddit Instance
-r = praw.Reddit('redditWho v%s' % (version))
+db = dblogin.login()                    # Instància de la BBDD
 
-# OAuth2 login
-r.set_oauth_app_info(oauth2.app_id, oauth2.app_secret, oauth2.app_uri)
 
-# Request access to the developer account
-# get_authorize_url(state, scopes, token refreshable)
-url = r.get_authorize_url('...', oauth2.app_scopes, True)
-webbrowser.open(url)
+
+
+##################################################################################
+'''
+while True:
+    subreddit = r.get_subreddit('learnpython').get_hot(limit=10)
+    for submission in subreddit.get_hot(limit=10)
+'''
+
+'''
+Base de dades
+
+try:
+        db = pymysql.connect(host = loginData.DB_HOST,
+                             user = loginData.DB_USER,
+                             password = loginData.DB_PASS,
+                             db = loginData.DB_NAME)
+        cursor = db.cursor()
+        print('Connexió amb la base de dades correcta.')
+        return cursor
+    except pymysql.OperationalError as e:
+        print('Error connectant amb la base de dades: ' + str(e))
+'''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Capturar un subreddit i agafar les publicacions HOT
+# r.get_subreddit('learnpython').get_hot(limit=10)
+
+# Capturar un post pel seu id i guardar-lo
+# variable = r.get_submission(submission_id = "105aru")
+
+# Veure les propietats d'un objecte
+# print(vars(variable))
+
+# Posts més votats de l'any en un subreddit
+# popular.get_top_from_year()
+# Després de fer:
+'''
+p = r.get_popular_subreddits()  # 25 en total
+for popular in p:
+    print (dir(popular))
+
+Per imprimir el contingut de l'últim subreddit popular:
+
+for var in popular.get_top_from_year():
+    print(var)
+
+I s'imprimeixen els vots i el títols dels posts més populars de l'últim any    
+'''
+
+
+# Per aconseguir veure el contingut d'un objecte, amb clau:valor quan l'objecte
+# no és un diccionari i vars() no funciona, importa la llibreria inspect.
+#
+# import inspect
+# inspect.getmembers(<objecte>)
