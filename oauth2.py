@@ -1,16 +1,20 @@
 #################################################################################
 #
-#   Script per facilitar el login a l'API, un cop s'ha executat
+#   Script per facilitar el login a l'API de reddit, un cop s'ha executat
 #   l'script oauth_token.py per primer cop i s'ha autoritzat l'accés de l'app
 #   al compte d'usuari i s'ha aconseguit el token de refresc.
+#
+#   Ús, després d'importar-lo, es crida a la funció login().
+#
+#   Retorna una instància de: praw.Reddit object.
 #
 #   Data creació:           23/03/2016
 #   Última modificació:     24/03/2016
 #
-#   Autor: Ramon Royo
-#          Treball de fi de grau (UOC)
+#   @ Autor: Ramon Royo
+#            Treball de fi de grau (UOC)
 #
-#   Fonts consultades:
+#   @ Fonts consultades:
 #
 #   Writing a reddit bot - 03 - OAuth 2
 #   https://www.youtube.com/watch?v=Uvxu2efXuiY

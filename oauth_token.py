@@ -6,13 +6,17 @@
 #   El token de refresc permet crear nous tokens d'accés a l'API de reddit,
 #   aquests últims tenen una vida de tan sols 60 minuts i cal regenerar-los.
 #
+#   Ús, s'executa directament des de la línia de comandos, obre una instància de
+#   navegador i després des de la línia de comandos demana la introducció d'un
+#   codi. Llegir els comentaris en línia per més detalls.
+#
 #   Data creació:           23/03/2016
 #   Última modificació:     24/03/2016
 #
-#	Autor: Ramon Royo
+#	@ Autor: Ramon Royo
 #	       Treball de fi de grau (UOC)
 #
-#   Fonts consultades:
+#   @ Fonts consultades:
 #
 #   Writing a reddit bot - 03 - OAuth 2
 #   https://www.youtube.com/watch?v=Uvxu2efXuiY
