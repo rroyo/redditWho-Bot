@@ -2,6 +2,9 @@
 ## Windows detritus
 #############
 
+*.bat
+*.txt
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
@@ -14,7 +17,6 @@ $RECYCLE.BIN/
 
 # Mac crap
 .DS_Store
-
 
 #############
 ## Python
