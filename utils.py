@@ -31,10 +31,8 @@
 #
 #################################################################################
 
-
 from redditWhoLib import loginData
 import time, datetime, praw, pymysql
-
 
 class baseDades(object):
     ''' Classe retornada pel mètode dblogin()
@@ -75,7 +73,7 @@ def dblogin():
         print('Error connectant amb la base de dades: ' + str(e))
 
 def oauth2():
-    ''' Per connectar amb l'API de Reddit. Cal tenir un token de refresc,
+    ''' Connecta amb l'API de Reddit. Cal tenir un token de refresc,
         generat amb el script oauth_token.py.
 
         :return: una connexió amb l'API de reddit
@@ -161,7 +159,7 @@ def sqlEscape(str):
     return str.replace("'","\\'")
 
 def printSQLStats(str, newposts, updates):
-    ''' Imprimeix els valors passats, amb un format concret
+    ''' Imprimeix el nombre de publicacions processades
 
         :param str: el títol del bloc a imprimir
         :param newposts: el nombre de publicacions noves afegides a la BBDD
@@ -179,10 +177,30 @@ def printSQLStats(str, newposts, updates):
     print('Actualizades:', updates)
     print()
 
+def printGetSubsStats(startTime, new, updated):
+    ''' Imprimeix el nombre de subreddits afegits a la BBDD
+        i el temps que s'ha tardat.
+
+        :param startime: el temps en que s'ha iniciat el procés, format UNIX
+        :param new: el nombre de subreddits nous afegits a la BBDD
+        :param updated: el nombre de subreddits actualitzats
+    '''
+    print()
+    text = ' getSubreddits '
+    print(text)
+    print(len(text) * '-')
+    print('Temps total:', chrono(startTime))
+    print('Nous:', new)
+    print('Actualitzats:', updated)
+    print()
+
+
 ###################################################################################
-# Funcions extretes de:
+# Les següents funcions han estat extretes del següent script:
 #
 # https://github.com/voussoir/reddit/blob/master/Prawtimestamps/timesearch.py
+#
+# Autor: Voussoir
 ###################################################################################
 def b36(i):
     ''' Transforma de base 36 a base 10 i a la inversa
@@ -302,12 +320,11 @@ def smartinsert(con, cur, results):
                 }
             #Fi if
 
-            #
             try:
                 query = "INSERT INTO posts VALUES('{idstr}', {idint}, '{title}', '{author}', '{subreddit}', {score}, {ups}, {downs}, {num_comments}, {is_self}, '{url}', {created_utc}, {over18})".format(**postdata)
                 cur.execute(query)
 
-            # En cas de produïr-se algun error, s'imprimeix i es segueix
+            # En cas de produïr-se algun error, s'imprimeix per facilitar el debug i es segueix
             except pymysql.MySQLError as e:                
                 #DEBUG
                 print(query)
