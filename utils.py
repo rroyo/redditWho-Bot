@@ -3,7 +3,7 @@
 #   Script amb diferents funcions útils i d'ús comú.
 #
 #   Data creació:           24/03/2016
-#   Última modificació:     03/04/2016
+#   Última modificació:     05/04/2016
 #
 #   @ Autor: Ramon Royo
 #            Treball de fi de grau (UOC)
@@ -32,7 +32,7 @@
 #################################################################################
 
 from redditWhoLib import loginData
-import time, datetime, praw, pymysql
+import time, datetime, praw, pymysql, re
 
 class baseDades(object):
     ''' Classe retornada pel mètode dblogin()
@@ -148,16 +148,6 @@ def chrono(startTime):
         print('chrono: es necessita un int o float (segons des del EPOCH) per calcular el temps transcorregut')
         return   
 
-def sqlEscape(str): 
-    ''' Escapa les cometes simples, per les consultes de SQL.
-
-    :param str: cadena a escapar
-
-    :return: cadena amb les commetes simples escapades
-    :rtype: str
-    '''       
-    return str.replace("'","\\'")
-
 def printSQLStats(str, newposts, updates):
     ''' Imprimeix el nombre de publicacions processades
 
@@ -194,6 +184,18 @@ def printGetSubsStats(startTime, new, updated):
     print('Actualitzats:', updated)
     print()
 
+def storeExcept(e, cur, con):
+    ''' Guarda l'excepció passada a la base de dades
+
+        :param e: el text amb la descripció de l'excepció
+    '''
+    try:
+        error = re.escape(str(e))
+        query = 'INSERT INTO excepts (description) VALUES("{0}")'.format(error)        
+        cur.execute(query)
+        con.commit()
+    except pymysql.MySQLError as e:
+        return
 
 ###################################################################################
 # Les següents funcions han estat extretes del següent script:
@@ -268,7 +270,7 @@ def human(timestamp):
     x = datetime.datetime.strftime(x, "%b %d %Y %H:%M:%S")
     return x
 
-def smartinsert(con, cur, results):
+def smartinsert(con, cur, results, MIN_SCORE):
     ''' La funció original ha estat modificada, per adaptar-la a les
         necessitats del projecte.
 
@@ -288,25 +290,22 @@ def smartinsert(con, cur, results):
     for o in results:     
         cur.execute("SELECT * FROM posts WHERE idstr='%s' LIMIT 1;" % o.id)
 
-        if not cur.fetchone():          # Nova fila a la BBDD
-            newposts += 1
+        if not cur.fetchone():          # Nova fila a la BBDD            
             # Reddit té un bug, en que si l'autor d'una publicació s'ha esborrat,
             # es produeix una excepció al intentar recuperar-ne el nom.
             try:                
                 o.authorx = o.author.name
             except AttributeError:
-                o.authorx = '[DELETED]'
+                o.authorx = '[DELETED]'            
 
-            postdata = {}               # Les dades que es guardaran a la BBDD
-
-            if isinstance(o, praw.objects.Submission):
+            if (isinstance(o, praw.objects.Submission) and (o.score >= MIN_SCORE)):
                 if o.is_self:
                     o.url = 'None'
 
                 postdata = {
                     'idstr': o.id,
                     'idint': b36(o.id),
-                    'title': sqlEscape(o.title),
+                    'title': re.escape(o.title),
                     'author': o.authorx,
                     'subreddit': o.subreddit.display_name,
                     'score': o.score,
@@ -318,21 +317,17 @@ def smartinsert(con, cur, results):
                     'created_utc': o.created_utc,
                     'over18': o.over_18
                 }
-            #Fi if
-
-            try:
-                query = "INSERT INTO posts VALUES('{idstr}', {idint}, '{title}', '{author}', '{subreddit}', {score}, {ups}, {downs}, {num_comments}, {is_self}, '{url}', {created_utc}, {over18})".format(**postdata)
-                cur.execute(query)
-
-            # En cas de produïr-se algun error, s'imprimeix per facilitar el debug i es segueix
-            except pymysql.MySQLError as e:                
-                #DEBUG
-                print(query)
-                #exit("Except: {0}".format(e))                
-                #FI DEBUG
-                print("Except: {0}".format(e))
-                pass
-        #Fi if
+            
+                try:
+                    newposts += 1
+                    query = "INSERT INTO posts VALUES('{idstr}', {idint}, '{title}', '{author}', '{subreddit}', {score}, {ups}, {downs}, {num_comments}, {is_self}, '{url}', {created_utc}, {over18})".format(**postdata)
+                    cur.execute(query)
+                except pymysql.MySQLError as e:
+                    text = 'smartinsert:Insert. ID: {0}. Excepció: {1}'.format(o.id, str(e))
+                    storeExcept(text, cur, con)
+                    pass
+            #Fi if (isinstance(o, praw.objects.Submission)...
+        #Fi if not cur.fetchone()
 
         else:                           # Actualització d'una entrada existent
             updates += 1
@@ -342,17 +337,16 @@ def smartinsert(con, cur, results):
                     'score': o.score,
                     'num_comments': o.num_comments, 
                 }
-            try:
-                query = "UPDATE posts SET score = {score}, num_comments = {num_comments} WHERE idstr = '{idstr}' LIMIT 1".format(**postdata)
-                cur.execute(query)
-            except pymysql.MySQLError as e:                
-                #DEBUG
-                print(query)
-                #exit("Except: {0}".format(e))                
-                #FI DEBUG
-                print("Except: {0}".format(e))
-                pass
-        #Fi else
-    #Fi bucle for
+                try:
+                    query = "UPDATE posts SET score = {score}, num_comments = {num_comments} WHERE idstr = '{idstr}' LIMIT 1".format(**postdata)
+                    cur.execute(query)
+                except pymysql.MySQLError as e:
+                    text = 'smartinsert:Update. ID: {0}. Excepció: {1}'.format(o.id, str(e))
+                    storeExcept(text, cur, con)
+                    pass
+            #Fi if (isinstance(o, praw.objects.Submission)...
+        #Fi else -> if not cur.fetchone()
+    #Fi bucle for o in results
+
     con.commit()
     return (newposts, updates)
