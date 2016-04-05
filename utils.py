@@ -12,16 +12,6 @@
 #
 #   PyMySQL documentation
 #   https://github.com/PyMySQL/PyMySQL#pymysql
-#    
-#   PyMySQL error handling
-#   http://stackoverflow.com/a/25026333/1067293
-#   Error genèric: pymysql.MySQLError
-#
-#   How do you return multiple values in Python?
-#   http://stackoverflow.com/questions/354883/how-do-you-return-multiple-values-in-python
-#
-#   Writing a reddit bot - 03 - OAuth 2
-#   https://www.youtube.com/watch?v=Uvxu2efXuiY
 #
 #   PRAW and OAUTH
 #   http://praw.readthedocs.org/en/stable/pages/oauth.html
@@ -44,7 +34,6 @@ class baseDades(object):
     def __init__(self, connection, cursor):
         self.con = connection
         self.cur = cursor
-
 
 def dblogin():
     ''' Per connectar amb la base de dades
@@ -148,26 +137,29 @@ def chrono(startTime):
         print('chrono: es necessita un int o float (segons des del EPOCH) per calcular el temps transcorregut')
         return   
 
-def printSQLStats(str, newposts, updates):
+def printSQLStats(str, newposts, updates, time):
     ''' Imprimeix el nombre de publicacions processades
 
         :param str: el títol del bloc a imprimir
         :param newposts: el nombre de publicacions noves afegides a la BBDD
         :param updates: el nombre de publicacions actualitzades
+        :param time: el temps de durada
     '''
     if (str != None):
         text = ' Subreddit: {0} '.format(str)
     else:
         text = ' Valors sessió '
     
-    print()
+    print(len(text) * '-')
     print(text)
     print(len(text) * '-')
+    if(time != None):
+        print('Durada total:', s2hms(time))
     print('Noves:', newposts)
-    print('Actualizades:', updates)
+    print('Actualitzades:', updates)
     print()
 
-def printGetSubsStats(startTime, new, updated):
+def printGetSubredditsStats(startTime, new, updated):
     ''' Imprimeix el nombre de subreddits afegits a la BBDD
         i el temps que s'ha tardat.
 
@@ -197,6 +189,17 @@ def storeExcept(e, cur, con):
     except pymysql.MySQLError as e:
         return
 
+def updateWait(wait, waitFraction):
+    ''' Espera un temps determinat i ho anuncia cada x minuts.
+
+        :param wait: El temps total a esperar, en format UNIX.
+        :param waitFraction: El temps que passa entre cada anunci.
+    '''
+    while wait >= 0:                
+        print('Falten {0} per la propera iteració'.format(s2hms(wait)))
+        wait -= waitFraction
+        time.sleep(waitFraction)
+    print()
 ###################################################################################
 # Les següents funcions han estat extretes del següent script:
 #

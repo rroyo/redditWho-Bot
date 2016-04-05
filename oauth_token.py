@@ -34,7 +34,7 @@ import webbrowser                               # Interacció amb el navegador
 # Connexió amb l'API
 #################################################################################
 
-r = praw.Reddit('redditWho script')             # Nova instància de reddit
+r = praw.Reddit(loginData.APP_UA)               # Nova instància de reddit
 
 # OAuth2 login
 r.set_oauth_app_info(loginData.APP_ID, loginData.APP_SECRET, loginData.APP_URI)

@@ -20,14 +20,8 @@
 #   PRAW documentation
 #   https://praw.readthedocs.org/en/stable/
 #
-#   How to retrieve SQL result column value using column name in Python?
-#   http://stackoverflow.com/questions/10195139/how-to-retrieve-sql-result-column-value-using-column-name-in-python
-#
-#   Timesearch.py
-#   https://github.com/voussoir/reddit/blob/master/Prawtimestamps/timesearch.py
-#
-#   UnicodeEncodeError: 'latin-1' codec can't encode character
-#   http://stackoverflow.com/questions/3942888/unicodeencodeerror-latin-1-codec-cant-encode-character
+#   Stackoverflow - Múltiples consultes
+#   http://stackoverflow.com
 #
 #   @  Subreddits i el nombre de subcriptors (per decidir quants en processo):
 #
@@ -68,6 +62,7 @@ SUB_LIMIT = 2000000                     # Subreddits capturats
 TOP_SUB_LIMIT = 100                     # Subreddits dels que s'extreuen publicacions
 MIN_SCORE = 1000                        # Puntuació mínima per incloure una publicació
 UPDATE_WAIT = 86400                     # Temps d'espera en segons, entre actualitzacions de la BBDD
+waitFraction = 900                      # Fracció de temps
 START_DATE = (time.time() - 31536000)   # Data a partir de la qual començar a capturar publicacions
                                         #   None, capturarà totes les publicacions des de l'inici del subreddit
                                         #   31536000 equival a un any en segons
@@ -88,7 +83,7 @@ def start():
         (r, db) = utils.rwlogin()       # Connecta amb l'API i la BBDD
 
         # Actualitza la taula de subreddits (~3h de durada) 
-        # getSubreddits(False, r, db)
+        getSubreddits(False, r, db)
 
         # Explora publicacions dels subreddits seleccionats
         getSubmissions(False, r, db)
@@ -98,8 +93,10 @@ def start():
         del db.cur
         del db.con
         print('Connexions tancades.')
-        print('Esperant {0} per la propera iteració\n\n'.format(utils.s2hms(UPDATE_WAIT)))
-        time.sleep(UPDATE_WAIT)
+        
+        #S'espera un temps determinat, per realitzar la propera iteració
+        utils.updateWait(UPDATE_WAIT, waitFraction)
+
 
 def getSubreddits(manual=True, r=None, db=None):
     ''' Extreu informació de la pàgina http://www.reddit.com/reddits
@@ -177,7 +174,7 @@ def getSubreddits(manual=True, r=None, db=None):
         print('Connexió amb la BBDD tancada.')
 
     # Mostra el temps que ha tardat en total
-    utils.printGetSubsStats(startTime, newSubs, updatedSubs)
+    utils.printGetSubredditsStats(startTime, newSubs, updatedSubs)
 
 def getSubmissions(manual=True, r=None, db=None):
     ''' Captura un nombre de subreddits determinat per TOP_SUB_LIMIT i ordenats per nombre
@@ -195,8 +192,9 @@ def getSubmissions(manual=True, r=None, db=None):
     newposts = 0                        # Nombre missatges nous (subreddit)
     updates = 0                         # Nombre missatges actualitzats (subreddit)
     subsCount = 1                       # Comptador per saber els subreddits processats
+    totalTime = 0
 
-    print('Capturant publicacions...')
+    print('Capturant publicacions...\n')
 
     if(manual):
         (r, db) = utils.rwlogin()       # connexió amb l'API i la BBDD 
@@ -221,9 +219,10 @@ def getSubmissions(manual=True, r=None, db=None):
 
         # Un a un, es processen tots els subreddits
         for subreddit in subList:
-            (newposts, updates, subsCount) = get_all_posts(subreddit=subreddit, db=db, r=r, subsCount=subsCount, lower=START_DATE)
+            (newposts, updates, subsCount, submissionsChrono) = get_all_posts(subreddit=subreddit, db=db, r=r, subsCount=subsCount, lower=START_DATE)
             totalNewposts += newposts
-            totalUpdates += updates            
+            totalUpdates += updates
+            totalTime += submissionsChrono
 
     except pymysql.MySQLError as e:
         text = ('getSubmissions:Select noms subreddits. Excepció: ' + str(e))
@@ -236,13 +235,13 @@ def getSubmissions(manual=True, r=None, db=None):
         print('Connexió amb la BBDD tancada.')
 
     # Es mostren els resultats de la sessió
-    utils.printSQLStats(None, totalNewposts, totalUpdates)
+    utils.printSQLStats(None, totalNewposts, totalUpdates, time=totalTime)
 
 def get_all_posts(subreddit, db, r, subsCount, lower=None, maxupper=None, interval=GET_SUBS_INTERVAL):
     ''' Funció extreta de:
 
         https://github.com/voussoir/reddit/blob/master/Prawtimestamps/timesearch.py
-        Autor: Voussoir
+        Autor: Ethan Dalool (Voussoir)
 
         Modificada per adaptar-la a les necessitats del projecte.
 
@@ -264,15 +263,17 @@ def get_all_posts(subreddit, db, r, subsCount, lower=None, maxupper=None, interv
                          si troba més de 100 publicacions o menys de 75.
 
         :return: El nombre de noves publicacions i d'aquelles que s'hagin actualitzat
-                 en cas de que ja existissin i el número de subreddit processat.
-        :rtype: int, int, int
+                 en cas de que ja existissin i el número de subreddit processat. Com a 
+                 quart valor, retorna els segons transcorreguts.
+        :rtype: int, int, int, float
     '''
-    MAXIMUM_EXPANSION_MULTIPLIER = 2
+    MAXIMUM_EXPANSION_MULTIPLIER = 2    # Valor màxim pel que es multiplica l'interval
     queryNewposts = 0                   # Noves publicacions, valor parcial
     queryUpdates = 0                    # Publicacions actualitzades
     newposts = 0                        # Noves publicacions, total subreddit
-    updates = 0                         # Publicacions actualizades
-    offset = -time.timezone
+    updates = 0                         # Publicacions actualitzades
+    offset = -time.timezone             # Compensació per la zona horària
+    startTime = time.time()             # Temps d'inici de captura de les publicacions
     
     if lower == 'update':        
         # Seguirà capturant missatges, des de l'últim que hi hagi a la BBDD
@@ -301,8 +302,11 @@ def get_all_posts(subreddit, db, r, subsCount, lower=None, maxupper=None, interv
     toomany_inarow = 0
     while lower < maxupper:
         text = ' Subreddit: {0} ({1} de {2}) '.format(subreddit, subsCount, TOP_SUB_LIMIT)
+        chrono = time.time() - startTime
+
         print(text)
         print(len(text) * '-')
+        print('Durada:', utils.s2hms(chrono))
         print('Current interval:', utils.s2hms(interval))
         print('Lower', utils.human(lower), lower)
         print('Upper', utils.human(upper), upper)
@@ -355,8 +359,8 @@ def get_all_posts(subreddit, db, r, subsCount, lower=None, maxupper=None, interv
         print()
     #Fi while lower < maxupper
 
-    utils.printSQLStats(subreddit, newposts, updates)
-    return(newposts, updates, subsCount+1)
+    utils.printSQLStats(subreddit, newposts, updates, time=None)
+    return(newposts, updates, subsCount+1, chrono)
 
 if (__name__ == '__main__'):
     start()
