@@ -3,8 +3,8 @@
 #   Bot per extreure informació de la base de dades de reddit, fent ús de la
 #   seva API.
 #
-#   Data creació:           24/03/2016
-#   Última modificació:     05/03/2016
+#   Data creació:           20/03/2016
+#   Última modificació:     06/04/2016
 #
 #   @ Autor: Ramon Royo
 #            Treball de fi de grau (UOC)
@@ -52,25 +52,32 @@
 #
 #################################################################################
 
-import praw                             # Wrapper API reddit
-import utils                            # Funcions d'ús comú
-import pymysql                          # Per interactuar amb la BBDD
+import praw                                 # Wrapper API reddit
+import utils                                # Funcions d'ús comú
+import pymysql                              # Per interactuar amb la BBDD
 import time
 import datetime
 
-SUB_LIMIT = 2000000                     # Subreddits capturats
-TOP_SUB_LIMIT = 100                     # Subreddits dels que s'extreuen publicacions
-MIN_SCORE = 1000                        # Puntuació mínima per incloure una publicació
-UPDATE_WAIT = 86400                     # Temps d'espera en segons, entre actualitzacions de la BBDD
-waitFraction = 900                      # Fracció de temps
-START_DATE = (time.time() - 31536000)   # Data a partir de la qual començar a capturar publicacions
-                                        #   None, capturarà totes les publicacions des de l'inici del subreddit
-                                        #   31536000 equival a un any en segons
-                                        # Ara mateix només es capturen les publicacions de fa un any
-                                        # fins ara, donat que el temps que es tarda en capturar totes
-                                        # les publicacions de 100 subreddits, per limitacions de l'API,
-                                        # és elevat (> 1 any).
-GET_SUBS_INTERVAL = 86400               # Interval de temps incial per capturar publicacions
+SUB_LIMIT = 2000000                         # Subreddits capturats
+TOP_SUB_LIMIT = 100                         # Subreddits dels que s'extreuen publicacions
+MAX_SUBMISSIONS = 100                       # Limit de publicacions capturades en una sola petició
+BELOW_MAX_SUBMISSIONS = 50                  # Es necessita capturar un interval de pubs per optimitzar el procés
+MIN_SCORE = 1000                            # Puntuació mínima per incloure una publicació
+UPDATE_WAIT = 86400                         # Temps d'espera en segons, entre actualitzacions de la BBDD
+waitFraction = 900                          # Fracció de temps
+START_DATE = (time.time() - 31536000)       # Data a partir de la qual començar a capturar publicacions
+                                            #   None, capturarà totes les publicacions des de l'inici del subreddit
+                                            #   31536000 equival a un any en segons
+                                            # Ara mateix només es capturen les publicacions de fa un any
+                                            # fins ara, donat que el temps que es tarda en capturar totes
+                                            # les publicacions de 100 subreddits, per limitacions de l'API,
+                                            # és elevat (> 1 any).
+GET_SUBS_INTERVAL = 3600                    # Interval de temps inicial per capturar publicacions
+MAXIMUM_EXPANSION_MULTIPLIER = 2            # Limit segur per seleccionar intervals per sota
+validRequests = 0                           # Nombre de crides i total de submissions
+validSubmissions = 0                        # Utilitzades per calcular la mitjana i poder aproximar-se més a 100
+lowSubmissions = 0
+highSubmissions = 0
 
 def start():
     ''' Controla el funcionament del bot. Crida a les funcions que capturen els noms
@@ -83,7 +90,7 @@ def start():
         (r, db) = utils.rwlogin()       # Connecta amb l'API i la BBDD
 
         # Actualitza la taula de subreddits (~3h de durada) 
-        getSubreddits(False, r, db)
+        #getSubreddits(False, r, db)
 
         # Explora publicacions dels subreddits seleccionats
         getSubmissions(False, r, db)
@@ -225,7 +232,9 @@ def getSubmissions(manual=True, r=None, db=None):
             totalTime += submissionsChrono
 
     except pymysql.MySQLError as e:
-        text = ('getSubmissions:Select noms subreddits. Excepció: ' + str(e))
+        text = ('getSubmissions():Select noms subreddits\nEXCEPCIÓ: {0}\nMISSATGE: {1}'
+                        .format(e.__doc__, str(e)))
+        #text = ('getSubmissions:Select noms subreddits. Excepció: ' + str(e))
         utils.storeExcept(text, db.cur, db.con)     
 
     if(manual):
@@ -243,7 +252,9 @@ def get_all_posts(subreddit, db, r, subsCount, lower=None, maxupper=None, interv
         https://github.com/voussoir/reddit/blob/master/Prawtimestamps/timesearch.py
         Autor: Ethan Dalool (Voussoir)
 
-        Modificada per adaptar-la a les necessitats del projecte.
+        Modificada per adaptar-la a les necessitats del projecte i he corregit un bug
+        on l'interval inferior es modificava quan hi havien pocs resultats, quan
+        s'hauria de mantenir fixe i variar tan sols el superior.
 
         Captura les publicacions del subreddit passat com a paràmetre. Es poden
         indicar els límits de dates inferiors i superiors, si no es fa, es capturen
@@ -267,13 +278,16 @@ def get_all_posts(subreddit, db, r, subsCount, lower=None, maxupper=None, interv
                  quart valor, retorna els segons transcorreguts.
         :rtype: int, int, int, float
     '''
-    MAXIMUM_EXPANSION_MULTIPLIER = 2    # Valor màxim pel que es multiplica l'interval
     queryNewposts = 0                   # Noves publicacions, valor parcial
     queryUpdates = 0                    # Publicacions actualitzades
     newposts = 0                        # Noves publicacions, total subreddit
     updates = 0                         # Publicacions actualitzades
     offset = -time.timezone             # Compensació per la zona horària
     startTime = time.time()             # Temps d'inici de captura de les publicacions
+    global validRequests
+    global validSubmissions
+    global lowSubmissions
+    global highSubmissions
     
     if lower == 'update':        
         # Seguirà capturant missatges, des de l'últim que hi hagi a la BBDD
@@ -299,29 +313,28 @@ def get_all_posts(subreddit, db, r, subsCount, lower=None, maxupper=None, interv
     upper = lower + interval            # Interval - Tall per sobre
     itemcount = 0
 
-    toomany_inarow = 0
+    toomany_inarow = 0                  # Modifica la velocitat en que es varien els intervals
+    intervalDiff = 0                    # Per mostrar la diferència entre interval present i anterior
+                                        # Comença com un int, acaba com una cadena
     while lower < maxupper:
-        text = ' Subreddit: {0} ({1} de {2}) '.format(subreddit, subsCount, TOP_SUB_LIMIT)
-        chrono = time.time() - startTime
-
-        print(text)
-        print(len(text) * '-')
-        print('Durada:', utils.s2hms(chrono))
-        print('Current interval:', utils.s2hms(interval))
-        print('Lower', utils.human(lower), lower)
-        print('Upper', utils.human(upper), upper)
         while True:
             try:
                 query = 'timestamp:%d..%d' % (lower, upper)
-                searchresults = list(r.search(query, subreddit=subreddit, sort='new', limit=100, syntax='cloudsearch'))
+                searchresults = list(r.search(query, subreddit=subreddit, sort='new',
+                                        limit=MAX_SUBMISSIONS, syntax='cloudsearch'))                
                 break
-            except:
-                text = ('get_all_posts:r.search. Excepció: ' + str(e))
+            except Exception as e:
+                text = ('get_all_posts():r.search\nEXCEPCIÓ: {0}\nMISSATGE: {1}'
+                        .format(e.__doc__, str(e)))
+                print(text)
                 utils.storeExcept(text, db.cur, db.con)                
-                print('\nException: {0}, resuming in 5...\n'.format(e))
+                print('Reintentant en 5 segons.\n')
                 time.sleep(5)
                 continue
         #Fi while True
+
+        text = ' Subreddit: {0} ({1} de {2}) '.format(subreddit, subsCount, TOP_SUB_LIMIT)
+        chrono = time.time() - startTime
 
         searchresults.reverse()
         # La següent línia mostra els ids de les publicacions capturades,
@@ -329,33 +342,47 @@ def get_all_posts(subreddit, db, r, subsCount, lower=None, maxupper=None, interv
         # print([i.id for i in searchresults])
 
         itemsfound = len(searchresults)
-        itemcount += itemsfound
-        print('Found', itemsfound, 'items')
+        itemcount += itemsfound        
+
+        #Mostra informació de cada petició
+        utils.gapStats(text, chrono, interval, intervalDiff, lower, upper, validRequests,
+                       validSubmissions, itemsfound, lowSubmissions, highSubmissions)                
 
         # El següent codi computa el nombre de publicacions trobades en l'interval
-        # de temps utilitzat, si són més de 99 (reddit limita a 100) o menys de
-        # 75 (per optimitzar les consultes), modifica l'interval i torna a cercar.
+        # de temps utilitzat, si són més del valor MAX_SUBMISSIONS o menys del
+        # 75% d'aquest, modifica l'interval i torna a cercar.
         # Quan troba un nombre de publicacions acceptable, les introdueix a la
         # base de dades.
+        # La variable toomany_inarow ajuda a accelerar la modificació de l'interval,
+        # en cas de que es produeixin diversos casos seguits en que s'obtinguin
+        # pocs o massa resultats.
 
-        if itemsfound < 75:
-            print('Too few results, increasing interval')
-            diff = (1 - (itemsfound / 75)) + 1
+        prevInterval = interval
+
+        if (itemsfound < BELOW_MAX_SUBMISSIONS):
+            print('Pocs resultats, incrementant l\'interval')            
+            diff = 2 - (itemsfound / BELOW_MAX_SUBMISSIONS)
+            # Pendent provar:  - o + (0.05 * toomany_inarow)
             diff = min(MAXIMUM_EXPANSION_MULTIPLIER, diff)
             interval = int(interval * diff)
-        if itemsfound > 99:
-            #Intentionally not elif
-            print('Too many results, reducing interval')
-            interval = int(interval * (0.8 - (0.05*toomany_inarow)))
-            upper = lower + interval
+            lowSubmissions += 1
+        elif (itemsfound > (MAX_SUBMISSIONS - 1)):
+            print('Massa resultats, reduïnt l\'interval')
+            interval = int(interval * (0.8 - (0.05 * toomany_inarow)))
             toomany_inarow += 1
-        else:
-            lower = upper
-            upper = lower + interval
-            toomany_inarow = max(0, toomany_inarow-1)
+            highSubmissions += 1
+        else:            
             (queryNewposts, queryUpdates) = utils.smartinsert(db.con, db.cur, searchresults, MIN_SCORE)
+            lower = upper
+            toomany_inarow = max(0, toomany_inarow-1)
             newposts += queryNewposts
             updates += queryUpdates
+            validRequests += 1
+            validSubmissions += itemsfound
+
+        upper = lower + interval
+        intervalDiff = prevInterval - interval
+
         print()
     #Fi while lower < maxupper
 

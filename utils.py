@@ -3,7 +3,7 @@
 #   Script amb diferents funcions útils i d'ús comú.
 #
 #   Data creació:           24/03/2016
-#   Última modificació:     05/04/2016
+#   Última modificació:     06/04/2016
 #
 #   @ Autor: Ramon Royo
 #            Treball de fi de grau (UOC)
@@ -200,6 +200,34 @@ def updateWait(wait, waitFraction):
         wait -= waitFraction
         time.sleep(waitFraction)
     print()
+
+def gapStats(text, chrono, interval, intervalDiff, lower, upper, validRequests, validSubmissions, itemsfound, lowSubmissions, highSubmissions):
+    ''' Mostra informació sobre cada petició de publicacions, durada, publicacions capturades,
+        límits i interval, etc.
+    '''
+
+    if validRequests == 0:
+        mitjana = 0
+    else:
+        mitjana = int(validSubmissions/validRequests)
+
+    if (intervalDiff > 0):
+        intervalDiffSign = '-'
+    else:
+        intervalDiffSign = '+'
+
+    print(text)
+    print(len(text) * '-')
+    print('Durada:', s2hms(chrono))
+    print('Interval: {0} ({1}{2})'.format(s2hms(interval), intervalDiffSign,
+                                          s2hms(abs(intervalDiff))))
+    print('Data inferior:', human(lower), lower)
+    print('Data superior:', human(upper), upper)
+    print('Peticions vàlides: {0}. Per sota: {1}. Per sobre: {2}'.format(validRequests, lowSubmissions, highSubmissions))     
+    print('Mitjana de publicacions per petició vàlida:', mitjana)
+
+    print('S\'han trobat', itemsfound, 'publicacions.')
+
 ###################################################################################
 # Les següents funcions han estat extretes del següent script:
 #
@@ -326,7 +354,8 @@ def smartinsert(con, cur, results, MIN_SCORE):
                     query = "INSERT INTO posts VALUES('{idstr}', {idint}, '{title}', '{author}', '{subreddit}', {score}, {ups}, {downs}, {num_comments}, {is_self}, '{url}', {created_utc}, {over18})".format(**postdata)
                     cur.execute(query)
                 except pymysql.MySQLError as e:
-                    text = 'smartinsert:Insert. ID: {0}. Excepció: {1}'.format(o.id, str(e))
+                    text = ('smartinsert:Insert. ID: {2}\nEXCEPCIÓ: {0}\nMISSATGE: {1}'
+                        .format(e.__doc__, str(e), o.id))                    
                     storeExcept(text, cur, con)
                     pass
             #Fi if (isinstance(o, praw.objects.Submission)...
@@ -338,13 +367,14 @@ def smartinsert(con, cur, results, MIN_SCORE):
                 postdata = {
                     'idstr': o.id,
                     'score': o.score,
-                    'num_comments': o.num_comments, 
+                    'num_comments': o.num_comments 
                 }
                 try:
                     query = "UPDATE posts SET score = {score}, num_comments = {num_comments} WHERE idstr = '{idstr}' LIMIT 1".format(**postdata)
                     cur.execute(query)
                 except pymysql.MySQLError as e:
-                    text = 'smartinsert:Update. ID: {0}. Excepció: {1}'.format(o.id, str(e))
+                    text = ('smartinsert:Update. ID: {2}\nEXCEPCIÓ: {0}\nMISSATGE: {1}'
+                        .format(e.__doc__, str(e), o.id))                    
                     storeExcept(text, cur, con)
                     pass
             #Fi if (isinstance(o, praw.objects.Submission)...
