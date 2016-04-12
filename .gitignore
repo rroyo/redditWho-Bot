@@ -1,8 +1,13 @@
 #############
-## Windows detritus
+## No vull publicar
 #############
 
 *.bat
+*.sql
+
+#############
+## Windows detritus
+#############
 
 # Windows image file caches
 Thumbs.db
