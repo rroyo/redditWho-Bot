@@ -237,10 +237,10 @@ def getSubmissions(manual=True, r=None, db=None):
     try:
         # Es fa una consulta per capturar els ids i noms dels subreddits
         select = db.cur.execute('SELECT idint, display_name FROM subreddits ORDER BY subscribers ' + 
-                                ' LIMIT {0}'.format(TOP_SUB_LIMIT))
+                                'DESC LIMIT {0}'.format(TOP_SUB_LIMIT))
 
         if (select == TOP_SUB_LIMIT):           # s'han capturat el nombre de noms esperat?
-            subreddits = db.cur.fetchall()        # es guarden els noms dels subreddits
+            subreddits = db.cur.fetchall()      # es guarden els noms dels subreddits
         # Si la consulta retorna un valor diferent de l'esperat, es llença una excepció
         else:
             raise pymysql.MySQLError('S\'esperaven %d files i se n\'han extret %d'
