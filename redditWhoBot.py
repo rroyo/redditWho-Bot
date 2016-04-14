@@ -1,4 +1,22 @@
 #################################################################################
+
+#   Modificacions futures
+
+#   La data maxupper, recorda que les publicacions poden ser votades durant els
+#   primers 6 mesos des de la data de publicació.
+#   Problemes: si es captura una publicació de poques hores, potser no arribarà
+#   al mínim de 500 punts, i més endavant si.
+#   No puc repetir cerques dintre d'intervals ja cercats, per no alterar erròniament el nombre
+#   de publicacions d'un subreddit. Les solucions per evitar-ho, em semblen massa complicades,
+#   donat que la solució més evident que se m'ocorre, és fixar un maxupper de com a mínim  
+#   1 o 2 dies, per donar temps a que les publicacions recullin vots. Aquest pas és necessari,
+#   independentment del temps que es tardi entre les iteracions de la captura de publicacions.
+#   I com a molt, cercar directament les publicacions guardades i actualitzar-ne els vots.
+#   Les puc discriminar buscant aquelles en que la data de creació i la d'actualització de la
+#   fila, es portin 6 mesos o menys.
+#   
+#   
+#   
 #
 #   Bot per extreure informació de la base de dades de reddit, fent ús de la
 #   seva API.
@@ -63,8 +81,8 @@ MAX_SUBMISSIONS = 100                       # Límit de publicacions capturades 
 BELOW_MAX_SUBMISSIONS = 75                  # Es necessita capturar un mínim de pubs per optimitzar el procés
 MIN_SCORE = 500                             # Puntuació mínima per incloure una publicació a la BBDD
 
-UPDATE_WAIT = 86400                         # Temps d'espera en segons, entre actualitzacions de la BBDD
-waitFraction = 900                          # Fracció de temps, per anunciar el pas de l'espera
+UPDATE_WAIT = 259200                        # Temps d'espera en segons, entre actualitzacions de la BBDD
+WAIT_FRACTION = 3600                        # Fracció de temps, per anunciar el pas de l'espera
 
 START_DATE = None                           # Data a partir de la qual començar a capturar publicacions
                                             #   None, capturarà totes les publicacions des de l'inici del subreddit
@@ -94,12 +112,12 @@ def start():
     while True:        
         (r, db) = utils.rwlogin()       # Connecta amb l'API i la BBDD
 
-        if (db.cur.execute('SELECT count(*) FROM subreddits') < 700000):
+       # if (db.cur.execute('SELECT count(*) FROM subreddits') < 700000):
             # Omple la taula de subreddits (~3h de durada) 
-            getSubreddits(False, False, r, db)
-        else:
+        #    getSubreddits(False, False, r, db)
+        #else:
             # Actualitza la taula de subreddits (~15-30min)
-            getSubreddits(False, True, r, db)
+         #   getSubreddits(False, True, r, db)
 
         # Explora publicacions dels subreddits seleccionats
         getSubmissions(False, r, db)
@@ -113,7 +131,7 @@ def start():
         totalRounds += 1
 
         #S'espera un temps determinat, per realitzar la propera iteració
-        utils.updateWait(UPDATE_WAIT, waitFraction)
+        utils.updateWait(UPDATE_WAIT, WAIT_FRACTION)
 
 def getSubreddits(manual=True, updateTop=False, r=None, db=None):
     ''' Extreu informació de la pàgina http://www.reddit.com/reddits
@@ -170,35 +188,42 @@ def getSubreddits(manual=True, updateTop=False, r=None, db=None):
             subreddits.append(r.get_subreddit(name[0]))
 
     # Es recorre el contingut
-    for subreddit in subreddits:  
-        # Comprova que el subreddit no existeixi ja a la base de dades
-        if not (db.cur.execute("SELECT 1 FROM subreddits WHERE idstr = '{0}' LIMIT 1".format(subreddit.id))):
-            # Comprova si és un dels 'errors' de reddit, un subreddit amb nom duplicat
+    for subreddit in subreddits:
+        try:
+            # Comprova que el subreddit no existeixi ja a la base de dades
+            if not (db.cur.execute("SELECT 1 FROM subreddits WHERE idstr = '{0}' LIMIT 1".format(subreddit.id))):
+                # Comprova si és un dels 'errors' de reddit, un subreddit amb nom duplicat
+                if (subreddit.display_name not in discarted):
+                    # Si no existeix i no és un duplicat es crea una nova fila a la BBDD
+                    db.cur.execute('INSERT INTO subreddits (idstr, idint, display_name, created_utc,' +
+                                   'description, subscribers, over18) VALUES(%s, %s, %s, %s, %s, %s, %s)',
+                                   ((subreddit.id,),(utils.b36(subreddit.id),),(subreddit.display_name,),
+                                   (int(subreddit.created_utc),),(subreddit.public_description,),
+                                   (subreddit.subscribers,),(subreddit.over18,)))                
+                    newSubs += 1
+            # Si ja existeix, s'actualitza
+            else:
+                db.cur.execute("UPDATE subreddits SET subscribers = %s, over18 = %s WHERE idstr = '%s' LIMIT 1"
+                      % (subreddit.subscribers, subreddit.over18, subreddit.id))
+                updatedSubs += 1
+
+            # Actualitza la taula on es guarden els canvis en el nombre de subscriptors
             if (subreddit.display_name not in discarted):
-                # Si no existeix i no és un duplicat es crea una nova fila a la BBDD
-                db.cur.execute('INSERT INTO subreddits (idstr, idint, display_name, created_utc,' +
-                               'description, subscribers, over18) VALUES(%s, %s, %s, %s, %s, %s, %s)',
-                               ((subreddit.id,),(utils.b36(subreddit.id),),(subreddit.display_name,),
-                               (int(subreddit.created_utc),),(subreddit.public_description,),
-                               (subreddit.subscribers,),(subreddit.over18,)))                
-                newSubs += 1
-        # Si ja existeix, s'actualitza
-        else:
-            db.cur.execute("UPDATE subreddits SET subscribers = %s, over18 = %s WHERE idstr = '%s' LIMIT 1"
-                  % (subreddit.subscribers, subreddit.over18, subreddit.id))
-            updatedSubs += 1
+                db.cur.execute('INSERT INTO subscribers (idsub, subscribers) VALUES({0},{1})'.format(utils.b36(subreddit.id), subreddit.subscribers))
 
-        # Actualitza la taula on es guarden els canvis en el nombre de subscriptors
-        if (subreddit.display_name not in discarted):
-            db.cur.execute('INSERT INTO subscribers (idsub, subscribers) VALUES({0},{1})'.format(utils.b36(subreddit.id), subreddit.subscribers))
+            totalSubs = newSubs + updatedSubs
 
-        totalSubs = newSubs + updatedSubs
-
-        # Cada 100 subreddits, es fa un commit a la BBDD
-        if not (totalSubs % 100):
-            db.con.commit()
-            print('Últim subreddit processat: %s. Total processats: %s' % (subreddit.id, totalSubs))         
-    # FI bucle for        
+            # Cada 50 subreddits, es fa un commit a la BBDD
+            if not (totalSubs % 50):
+                db.con.commit()
+                print('Últim subreddit processat: %s. Total processats: %s' % (subreddit.id, totalSubs))
+        except (HTTPError, ConnectionResetError, HTTPException, pymysql.err.OperationalError) as e:
+            text = 'getSubreddits():HTTPError\nSubreddit on ha fallat: {2} ({3})\nEXCEPCIÓ: {0}\nMISSATGE: {1}'.format(
+                    e.__doc__, str(e), subreddit.display_name, subreddit.id)
+            utils.storeExcept(text, db.cur, db.con)
+            time.sleep(10)
+            continue
+    # FI bucle for subreddit in subreddits       
 
     db.con.commit()                     # Un últim commit per assegurar que la resta de 100, vagi també a la BBDD
 

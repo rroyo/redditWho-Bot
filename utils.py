@@ -304,7 +304,7 @@ def storeLastDate(idint, lastDate, db):
 
         db.con.commit()
     except pymysql.MySQLError as e:
-        text = 'storedLastDate(). \nEXCEPCIÓ: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e))
+        text = 'storedLastDate(). Subreddit: {2}. Data no guarda: {3}\nEXCEPCIÓ: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e), idint, lastData)
         storeExcept(text, db.cur, db.con)
 
 def getLastDate(idint, db):
@@ -450,9 +450,10 @@ def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
             
                 try:
                     newposts += 1
-                    query = """INSERT INTO posts VALUES('{idstr}', {idsub}, '{title}', '{author}',
-                             '{subreddit}', {score}, {ups}, {downs}, {num_comments}, {is_self},
-                             '{domain}', '{url}', {created_utc}, {over18})
+                    query = """INSERT INTO posts (idstr, idsub, title, author, subreddit, score, ups, downs,
+                               num_comments, is_self, domain, url, created_utc, over18)
+                               VALUES('{idstr}', {idsub}, '{title}', '{author}', '{subreddit}', {score}, {ups},
+                               {downs}, {num_comments},{is_self}, '{domain}', '{url}', {created_utc}, {over18})
                             """.format(**postdata)
                     cur.execute(query)                    
                 except pymysql.MySQLError as e:
@@ -461,7 +462,7 @@ def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
                     pass
             #Fi if (isinstance(o, praw.objects.Submission)...
 
-            subredditSubmissions += 1       # Nombre total de publicacions al subreddit
+            subredditSubmissions += 1   # Nombre total de publicacions al subreddit
 
         #Fi if not cur.fetchone()
 
