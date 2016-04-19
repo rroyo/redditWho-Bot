@@ -1,9 +1,9 @@
 #################################################################################
 #
-#   Script amb diferents funcions útils i d'ús comú.
+#   Script amb diferents funcions utils i d'us comu.
 #
-#   Data creació:           24/03/2016
-#   Última modificació:     09/04/2016
+#   Data creacio:           24/03/2016
+#   ultima modificacio:     15/04/2016
 #
 #   @ Autor: Ramon Royo
 #            Treball de fi de grau (UOC)
@@ -21,12 +21,12 @@
 #
 #################################################################################
 
-from redditWhoLib import loginData
+import logindata
 from urllib import parse
 import time, datetime, praw, pymysql, re
 
 class baseDades(object):
-    ''' Classe retornada pel mètode dblogin()
+    ''' Classe retornada pel metode dblogin()
 
         :atributtes: objecte amb dos atributs
         :atype: pymysql.connections.Connection object
@@ -39,24 +39,24 @@ class baseDades(object):
 def dblogin():
     ''' Per connectar amb la base de dades
 
-        :return: connexió amb la BBDD
+        :return: connexio amb la BBDD
         :rtype: pymysql.connections.Connection object
         :rtype: pymysql.cursors.Cursor object
     '''
     try:
-        connection = pymysql.connect(host = loginData.DB_HOST,
-                                     user = loginData.DB_USER,
-                                     password = loginData.DB_PASS,
-                                     db = loginData.DB_NAME,
+        connection = pymysql.connect(host = logindata.DB_HOST,
+                                     user = logindata.DB_USER,
+                                     password = logindata.DB_PASS,
+                                     db = logindata.DB_NAME,
                                      use_unicode = True,
                                      charset='utf8mb4')
         
         cursor = connection.cursor()
 
         # S'usa la BBDD on es guarda tot el contingut
-        cursor.execute('USE '+ loginData.DB_NAME +';')
+        cursor.execute('USE '+ logindata.DB_NAME +';')
 
-        print('Connexió amb la base de dades correcta.')
+        print('Connexio amb la base de dades correcta.')
         return baseDades(connection, cursor)
 
     except pymysql.OperationalError as e:
@@ -66,37 +66,37 @@ def oauth2():
     ''' Connecta amb l'API de Reddit. Cal tenir un token de refresc,
         generat amb el script oauth_token.py.
 
-        :return: una connexió amb l'API de reddit
+        :return: una connexio amb l'API de reddit
         :rtype: praw.Reddit object
     '''
     print('Connectant amb l\'API de reddit.')
-    r = praw.Reddit(loginData.APP_UA)                       # Nova instància de reddit
-    r.set_oauth_app_info(loginData.APP_ID,                  # OAuth2 login
-                loginData.APP_SECRET, loginData.APP_URI)
-    r.refresh_access_information(loginData.APP_REFRESH)     # Refresc del token
-    print('Connexió amb l\'API correcta. '
+    r = praw.Reddit(logindata.APP_UA)                       # Nova instancia de reddit
+    r.set_oauth_app_info(logindata.APP_ID,                  # OAuth2 login
+                logindata.APP_SECRET, logindata.APP_URI)
+    r.refresh_access_information(logindata.APP_REFRESH)     # Refresc del token
+    print('Connexio amb l\'API correcta. '
           'Connectat com a ' + str(r.user) + '.')
     return r  
 
 def rwlogin():
     ''' Connecta amb la BBDD i l'API
 
-    :return: Connexió amb l'API de reddit i amb la BBDD
+    :return: Connexio amb l'API de reddit i amb la BBDD
     :rtype: praw.Reddit object
     :rtype: dblogin.baseDades
     '''
-    # Per assegurar que s'estableix una connexió amb l'API, es comproven 3 condicions
-    # si r està definida, si r és instància de praw.Reddit i si r conté una connexió Oauth2
+    # Per assegurar que s'estableix una connexio amb l'API, es comproven 3 condicions
+    # si r esta definida, si r es instancia de praw.Reddit i si r conte una connexio Oauth2
     while True:
         if(('r' not in locals()) or (not isinstance(r, praw.Reddit)) or (not(r.is_oauth_session()))):
-            r = oauth2()                # Instància de reddit            
+            r = oauth2()                # Instancia de reddit            
         else:
             break                       # es compleixen les 3 condicions, es trenca el bucle
 
-    # Igual que l'anterior, comprovacions per assegurar una connexió correcta
+    # Igual que l'anterior, comprovacions per assegurar una connexio correcta
     while True:
         if(('db' not in locals()) or (not isinstance(db, baseDades))):
-            db = dblogin()              # Instància de la BBDD
+            db = dblogin()              # Instancia de la BBDD
         else:
             break
     return(r, db)
@@ -121,7 +121,7 @@ def s2dhms(seconds):
 
         return('{days}d:{hours:02d}h:{minutes:02d}m:{seconds:02d}s'.format(**dhms))
     else:
-        print('s2dhms: es necessita un int o float (representant segons) per fer la conversió')
+        print('s2dhms: es necessita un int o float (representant segons) per fer la conversio')
         return
 
 def chrono(startTime):
@@ -142,7 +142,7 @@ def chrono(startTime):
 def printSQLStats(str, newposts, updates, time):
     ''' Imprimeix el nombre de publicacions processades
 
-        :param str: el títol del bloc a imprimir
+        :param str: el titol del bloc a imprimir
         :param newposts: el nombre de publicacions noves afegides a la BBDD
         :param updates: el nombre de publicacions actualitzades
         :param time: el temps de durada
@@ -150,7 +150,7 @@ def printSQLStats(str, newposts, updates, time):
     if (str != None):
         text = ' Subreddit: {0} '.format(str)
     else:
-        text = ' Valors sessió '
+        text = ' Valors sessio '
     
     print(len(text) * '-')
     print(text)
@@ -165,7 +165,7 @@ def printGetSubredditsStats(startTime, new, updated):
     ''' Imprimeix el nombre de subreddits afegits a la BBDD
         i el temps que s'ha tardat.
 
-        :param startime: el temps en que s'ha iniciat el procés, format UNIX
+        :param startime: el temps en que s'ha iniciat el proces, format UNIX
         :param new: el nombre de subreddits nous afegits a la BBDD
         :param updated: el nombre de subreddits actualitzats
     '''
@@ -179,9 +179,9 @@ def printGetSubredditsStats(startTime, new, updated):
     print()
 
 def storeExcept(e, cur, con):
-    ''' Guarda l'excepció passada a la base de dades
+    ''' Guarda l'excepcio passada a la base de dades
 
-        :param e: el text amb la descripció de l'excepció
+        :param e: el text amb la descripcio de l'excepcio
     '''
     try:
         error = re.escape(str(e))
@@ -189,7 +189,14 @@ def storeExcept(e, cur, con):
         cur.execute(query)
         con.commit()
     except pymysql.MySQLError as e:
-        return
+        text = 'storeExcept(). \nEXCEPCIo: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e))
+        print(text)
+        print(human(time.time()))
+        # Intencionadament es surt, no s'hauria d'haver arribat aqui, s'ha produit algun error greu
+        # i no es poden emmagatzemar les excepcions i segurament cap altra dada.
+        # Per futures modificacions, intentare tenir en compte totes les possibles situacions i
+        # eliminare la sortida del script.
+        raise SystemExit
 
 def updateWait(wait, waitFraction):
     ''' Espera un temps determinat i ho anuncia cada x minuts.
@@ -198,7 +205,7 @@ def updateWait(wait, waitFraction):
         :param waitFraction: El temps que passa entre cada anunci.
     '''
     while wait >= 0:                
-        print('Falten {0} per la propera iteració'.format(s2dhms(wait)))
+        print('Falten {0} per la propera iteracio'.format(s2dhms(wait)))
         wait -= waitFraction
         time.sleep(waitFraction)
     print()
@@ -206,8 +213,8 @@ def updateWait(wait, waitFraction):
 def gapStats(textSubreddit, chrono, printInterval, intervalDiff, printLower, printUpper,
              validRequests, totalSubmissions, itemsfound, belowRequests, aboveRequests,
              MAX_SUBMISSIONS, BELOW_MAX_SUBMISSIONS, absChrono):
-    ''' Mostra informació sobre cada petició de publicacions, durada, publicacions capturades,
-        límits i interval, etc.
+    ''' Mostra informacio sobre cada peticio de publicacions, durada, publicacions capturades,
+        limits i interval, etc.
     '''
     optimalRequests = validRequests - belowRequests
     totalRequests = validRequests + aboveRequests
@@ -243,7 +250,7 @@ def gapStats(textSubreddit, chrono, printInterval, intervalDiff, printLower, pri
     print('Mitjana de publicacions guardades:', mitjana)
 
     if (itemsfound > (MAX_SUBMISSIONS-1)):
-        print('S\'han trobat', itemsfound, 'publicacions o més, reduïnt interval.')
+        print('S\'han trobat', itemsfound, 'publicacions o mes, reduint interval.')
     elif (itemsfound < BELOW_MAX_SUBMISSIONS):
         print('S\'han trobat', itemsfound, 'publicacions, incrementant interval.')
         print('Guardant publicacions')
@@ -254,7 +261,7 @@ def gapStats(textSubreddit, chrono, printInterval, intervalDiff, printLower, pri
 def getDomain(url):
     ''' Retorna el domini de la URL passada
 
-        :param url: l'adreça
+        :param url: l'adreca
 
         :return: retorna el domini
         :rType: str
@@ -266,7 +273,7 @@ def getNumberSubmissions(idint, db):
 
         :param idint: id en base 10 del subreddit
 
-        :return: el nombre de publicacions o None si es produeix una excepció
+        :return: el nombre de publicacions o None si es produeix una excepcio
         :rType: int o None
     '''
     try:
@@ -278,17 +285,17 @@ def getNumberSubmissions(idint, db):
             return 0           
 
     except pymysql.MySQLError as e:
-        text = 'getNumberSubmissions(). \nEXCEPCIÓ: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e))
+        text = 'getNumberSubmissions(). \nEXCEPCIo: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e))
         storeExcept(text, db.cur, db.con)
-        # Intencionadament es surt, no s'hauria d'haver arribat aquí. És preferible sortir, a
+        # Intencionadament es surt, no s'hauria d'haver arribat aqui. es preferible sortir, a
         # que es pugui modificar erroniament el valor que recull el nombre total de publicacions.        
         raise SystemExit
 
 def storeLastDate(idint, lastDate, db):
-    ''' Emmagatzema la data de l'última publicació trobada per get_all_posts()
+    ''' Emmagatzema la data de l'ultima publicacio trobada per get_all_posts()
 
         :param idint: id en base 10 del subreddit
-        :param lastDate: data en format UNIX i zona horària UTC, de la última publicació
+        :param lastDate: data en format UNIX i zona horaria UTC, de la ultima publicacio
         :db: objecte baseDades
     '''
 
@@ -304,11 +311,11 @@ def storeLastDate(idint, lastDate, db):
 
         db.con.commit()
     except pymysql.MySQLError as e:
-        text = 'storedLastDate(). Subreddit: {2}. Data no guarda: {3}\nEXCEPCIÓ: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e), idint, lastData)
+        text = 'storedLastDate(). Subreddit: {2}. Data no guarda: {3}\nEXCEPCIo: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e), idint, lastData)
         storeExcept(text, db.cur, db.con)
 
 def getLastDate(idint, db):
-    ''' Retorna la data de l'última publicació guardada del subreddit passat
+    ''' Retorna la data de l'ultima publicacio guardada del subreddit passat
 
         :param idint: id en base 10 del subreddit
         :db: objecte baseDades 
@@ -324,7 +331,7 @@ def getLastDate(idint, db):
         return 0
 
 ###################################################################################
-# Les següents funcions han estat extretes del següent script:
+# Les seguents funcions han estat extretes del seguent script:
 #
 # https://github.com/voussoir/reddit/blob/master/Prawtimestamps/timesearch.py
 #
@@ -343,7 +350,7 @@ def b36(i):
     if type(i) == str:
         return base36decode(i)
 
-    print('b36: es necessita un int per fer la conversió')
+    print('b36: es necessita un int per fer la conversio')
     return 0
 
 def base36decode(number):
@@ -360,7 +367,7 @@ def base36encode(number, alphabet='0123456789abcdefghijklmnopqrstuvwxyz'):
     ''' Converteix un nombre sencer a una cadena en base 36
 
         :param number: Nombre sencer
-        :param alphabet: Caràcters usats en la conversió (OPCIONAL)
+        :param alphabet: Caracters usats en la conversio (OPCIONAL)
 
         :return: El nombre sencer convertit a base 36
         :rtype: str
@@ -385,7 +392,7 @@ def human(timestamp):
 
             time.time()   -> 1459629617.0604663
             primera conv. -> 2016-04-02 20:40:17.060466
-            última conv.  -> Apr 02 2016 20:40:17
+            ultima conv.  -> Apr 02 2016 20:40:17
 
         :param timestamp: la data i hora retornats per time.time()
 
@@ -397,7 +404,7 @@ def human(timestamp):
     return x
 
 def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
-    ''' La funció original ha estat modificada, per adaptar-la a les
+    ''' La funcio original ha estat modificada, per adaptar-la a les
         necessitats del projecte.
 
         Insereix els valors passats a la base de dades
@@ -407,7 +414,7 @@ def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
         :param cur: pymysql.cursors.Cursor object
         :param results: una llista d'objectes praw.objects.Submission
         :param idint: id del subreddit en base 10
-        :param MIN_SCORE: puntuació mínima de la publicació per ser inclosa a la BBDD
+        :param MIN_SCORE: puntuacio minima de la publicacio per ser inclosa a la BBDD
         :param subredditSubmissions: nombre total de publicacions al subreddit
 
         :return: el nombre de publicacions noves afegides i les acualitzades
@@ -419,9 +426,9 @@ def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
     for o in results:     
         cur.execute("SELECT * FROM posts WHERE idstr='{0}' LIMIT 1".format(o.id))             
 
-        if not cur.fetchone():          # Nova publicació a la BBDD            
-            # Reddit té un bug, en que si l'autor d'una publicació s'ha esborrat,
-            # es produeix una excepció al intentar recuperar-ne el nom.
+        if not cur.fetchone():          # Nova publicacio a la BBDD            
+            # Reddit te un bug, en que si l'autor d'una publicacio s'ha esborrat,
+            # es produeix una excepcio al intentar recuperar-ne el nom.
             try:                
                 o.authorx = o.author.name
             except AttributeError:
@@ -457,7 +464,7 @@ def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
                             """.format(**postdata)
                     cur.execute(query)                    
                 except pymysql.MySQLError as e:
-                    text = 'smartinsert:Insert. ID: {2}\nEXCEPCIÓ: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e), o.id)
+                    text = 'smartinsert:Insert. ID: {2}\nEXCEPCIo: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e), o.id)
                     storeExcept(text, cur, con)
                     pass
             #Fi if (isinstance(o, praw.objects.Submission)...
@@ -466,7 +473,7 @@ def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
 
         #Fi if not cur.fetchone()
 
-        else:                           # Actualització d'una entrada existent
+        else:                           # Actualitzacio d'una entrada existent
             updates += 1
             if isinstance(o, praw.objects.Submission):
                 postdata = {
@@ -478,19 +485,19 @@ def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
                     query = "UPDATE posts SET score = {score}, num_comments = {num_comments} WHERE idstr = '{idstr}' LIMIT 1".format(**postdata)
                     cur.execute(query)
                 except pymysql.MySQLError as e:
-                    text = 'smartinsert:Update. ID: {2}\nEXCEPCIÓ: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e), o.id)
+                    text = 'smartinsert:Update. ID: {2}\nEXCEPCIo: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e), o.id)
                     storeExcept(text, cur, con)
                     pass
             #Fi if (isinstance(o, praw.objects.Submission)...
         #Fi else -> if not cur.fetchone()        
     #Fi bucle for o in results
 
-    # Just en aquest moment, també s'actualitzen el nombre de publicacions de la taula subreddits
+    # Just en aquest moment, tambe s'actualitzen el nombre de publicacions de la taula subreddits
     try:
         cur.execute("UPDATE subreddits SET submissions = {0} WHERE idint={1} LIMIT 1".format(subredditSubmissions, idint))
 
     except pymysql.MySQLError as e:
-        text = 'smartinsert:Actualització del nombre de publicacions. Nombre no guardat: {2}\nEXCEPCIÓ: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e), subredditSubmissions)
+        text = 'smartinsert:Actualitzacio del nombre de publicacions. Nombre no guardat: {2}\nEXCEPCIo: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e), subredditSubmissions)
         storeExcept(text, cur, con)
 
     con.commit()

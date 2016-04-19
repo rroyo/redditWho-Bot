@@ -4,6 +4,8 @@
 
 *.bat
 *.sql
+logindata.py
+misc/
 
 #############
 ## Windows detritus
