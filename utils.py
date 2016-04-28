@@ -50,7 +50,7 @@ def dblogin():
                                      db = logindata.DB_NAME,
                                      use_unicode = True,
                                      charset='utf8mb4')
-        
+
         cursor = connection.cursor()
 
         # S'usa la BBDD on es guarda tot el contingut
@@ -76,7 +76,7 @@ def oauth2():
     r.refresh_access_information(logindata.APP_REFRESH)     # Refresc del token
     print('Connexio amb l\'API correcta. '
           'Connectat com a ' + str(r.user) + '.')
-    return r  
+    return r
 
 def rwlogin():
     ''' Connecta amb la BBDD i l'API
@@ -89,7 +89,7 @@ def rwlogin():
     # si r esta definida, si r es instancia de praw.Reddit i si r conte una connexio Oauth2
     while True:
         if(('r' not in locals()) or (not isinstance(r, praw.Reddit)) or (not(r.is_oauth_session()))):
-            r = oauth2()                # Instancia de reddit            
+            r = oauth2()                # Instancia de reddit
         else:
             break                       # es compleixen les 3 condicions, es trenca el bucle
 
@@ -107,12 +107,12 @@ def s2dhms(seconds):
     :param seconds: nombre de segons
 
     :return: dies, hores, minuts i segons
-    :rtype: str   
+    :rtype: str
     '''
     if (isinstance(seconds, float)):
         seconds = int(seconds)
 
-    if (isinstance(seconds, int)):               
+    if (isinstance(seconds, int)):
         m, s = divmod(seconds, 60)
         h, m = divmod(m, 60)
         d, h = divmod(h, 24)
@@ -130,14 +130,14 @@ def chrono(startTime):
     :param startTime: segons des del EPOCH
 
     :return: hores, minuts i segons
-    :rtype: str   
+    :rtype: str
     '''
     if (isinstance(startTime, (int, float))):
         interval = int(time.time()) - startTime
         return(s2dhms(interval))
     else:
         print('chrono: es necessita un int o float (segons des del EPOCH) per calcular el temps transcorregut')
-        return   
+        return
 
 def printSQLStats(str, newposts, updates, time):
     ''' Imprimeix el nombre de publicacions processades
@@ -151,7 +151,7 @@ def printSQLStats(str, newposts, updates, time):
         text = ' Subreddit: {0} '.format(str)
     else:
         text = ' Valors sessio '
-    
+
     print(len(text) * '-')
     print(text)
     print(len(text) * '-')
@@ -185,7 +185,7 @@ def storeExcept(e, cur, con):
     '''
     try:
         error = re.escape(str(e))
-        query = 'INSERT INTO excepts (description) VALUES("{0}")'.format(error)        
+        query = 'INSERT INTO excepts (description) VALUES("{0}")'.format(error)
         cur.execute(query)
         con.commit()
     except pymysql.MySQLError as e:
@@ -204,7 +204,7 @@ def updateWait(wait, waitFraction):
         :param wait: El temps total a esperar, en format UNIX.
         :param waitFraction: El temps que passa entre cada anunci.
     '''
-    while wait >= 0:                
+    while wait >= 0:
         print('Falten {0} per la propera iteracio'.format(s2dhms(wait)))
         wait -= waitFraction
         time.sleep(waitFraction)
@@ -212,7 +212,7 @@ def updateWait(wait, waitFraction):
 
 def gapStats(textSubreddit, chrono, printInterval, intervalDiff, printLower, printUpper,
              validRequests, totalSubmissions, itemsfound, belowRequests, aboveRequests,
-             MAX_SUBMISSIONS, BELOW_MAX_SUBMISSIONS, absChrono):
+             MAX_SUBMISSIONS, BELOW_MAX_SUBMISSIONS, absChrono, absoluteStartTime):
     ''' Mostra informacio sobre cada peticio de publicacions, durada, publicacions capturades,
         limits i interval, etc.
     '''
@@ -221,7 +221,7 @@ def gapStats(textSubreddit, chrono, printInterval, intervalDiff, printLower, pri
 
     if totalRequests == 0:
         totalRequests = 1
-    
+
     percentOptimal = optimalRequests / totalRequests * 100
     percentBelow = belowRequests / totalRequests * 100
     percentAbobe = aboveRequests / totalRequests * 100
@@ -235,10 +235,10 @@ def gapStats(textSubreddit, chrono, printInterval, intervalDiff, printLower, pri
         intervalDiffSign = '-'
     else:
         intervalDiffSign = '+'
-    
+
     print(textSubreddit)
     print(len(textSubreddit) * '-')
-    print('Temps subreddit: {0}. Temps absolut: {1}'.format(s2dhms(chrono), s2dhms(absChrono)))
+    print('Temps subreddit: {0}. Temps absolut: {1}. Iniciat: {2}'.format(s2dhms(chrono), s2dhms(absChrono), human(absoluteStartTime)))
     print('Interval: {0} ({1}{2})'.format(s2dhms(printInterval), intervalDiffSign,
                                           s2dhms(abs(intervalDiff))))
     print('Data inferior:', human(printLower), printLower)
@@ -282,13 +282,13 @@ def getNumberSubmissions(idint, db):
         if (rows):
             return db.cur.fetchone()[0]
         else:
-            return 0           
+            return 0
 
     except pymysql.MySQLError as e:
         text = 'getNumberSubmissions(). \nEXCEPCIo: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e))
         storeExcept(text, db.cur, db.con)
         # Intencionadament es surt, no s'hauria d'haver arribat aqui. es preferible sortir, a
-        # que es pugui modificar erroniament el valor que recull el nombre total de publicacions.        
+        # que es pugui modificar erroniament el valor que recull el nombre total de publicacions.
         raise SystemExit
 
 def storeLastDate(idint, lastDate, db):
@@ -318,10 +318,10 @@ def getLastDate(idint, db):
     ''' Retorna la data de l'ultima publicacio guardada del subreddit passat
 
         :param idint: id en base 10 del subreddit
-        :db: objecte baseDades 
+        :db: objecte baseDades
 
         :return: data en format UNIX
-        :rType: int       
+        :rType: int
     '''
     rows = db.cur.execute('SELECT lastDateUTC FROM latestposts WHERE idsub={0} LIMIT 1'.format(idint))
 
@@ -371,7 +371,7 @@ def base36encode(number, alphabet='0123456789abcdefghijklmnopqrstuvwxyz'):
 
         :return: El nombre sencer convertit a base 36
         :rtype: str
-    '''    
+    '''
     base36 = ''
     sign = ''
     if number < 0:
@@ -397,7 +397,7 @@ def human(timestamp):
         :param timestamp: la data i hora retornats per time.time()
 
         :return: la data i hora convertits
-        :rtype: str 
+        :rtype: str
     '''
     x = datetime.datetime.utcfromtimestamp(timestamp)
     x = datetime.datetime.strftime(x, "%b %d %Y %H:%M:%S")
@@ -423,16 +423,16 @@ def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
     newposts = 0                        # Comptabilitzen pubs noves i actualitzades
     updates = 0
 
-    for o in results:     
-        cur.execute("SELECT * FROM posts WHERE idstr='{0}' LIMIT 1".format(o.id))             
+    for o in results:
+        cur.execute("SELECT * FROM posts WHERE idstr='{0}' LIMIT 1".format(o.id))
 
-        if not cur.fetchone():          # Nova publicacio a la BBDD            
+        if not cur.fetchone():          # Nova publicacio a la BBDD
             # Reddit te un bug, en que si l'autor d'una publicacio s'ha esborrat,
             # es produeix una excepcio al intentar recuperar-ne el nom.
-            try:                
+            try:
                 o.authorx = o.author.name
             except AttributeError:
-                o.authorx = '[DELETED]'            
+                o.authorx = '[DELETED]'
 
             if (isinstance(o, praw.objects.Submission) and (o.score >= MIN_SCORE)):
                 if o.is_self:
@@ -454,7 +454,7 @@ def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
                     'created_utc': int(o.created_utc),
                     'over18': o.over_18
                 }
-            
+
                 try:
                     newposts += 1
                     query = """INSERT INTO posts (idstr, idsub, title, author, subreddit, score, ups, downs,
@@ -462,7 +462,7 @@ def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
                                VALUES('{idstr}', {idsub}, '{title}', '{author}', '{subreddit}', {score}, {ups},
                                {downs}, {num_comments},{is_self}, '{domain}', '{url}', {created_utc}, {over18})
                             """.format(**postdata)
-                    cur.execute(query)                    
+                    cur.execute(query)
                 except pymysql.MySQLError as e:
                     text = 'smartinsert:Insert. ID: {2}\nEXCEPCIo: {0}\nMISSATGE: {1}'.format(e.__doc__, str(e), o.id)
                     storeExcept(text, cur, con)
@@ -479,7 +479,7 @@ def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
                 postdata = {
                     'idstr': o.id,
                     'score': o.score,
-                    'num_comments': o.num_comments 
+                    'num_comments': o.num_comments
                 }
                 try:
                     query = "UPDATE posts SET score = {score}, num_comments = {num_comments} WHERE idstr = '{idstr}' LIMIT 1".format(**postdata)
@@ -489,7 +489,7 @@ def smartinsert(con, cur, results, idint, MIN_SCORE, subredditSubmissions):
                     storeExcept(text, cur, con)
                     pass
             #Fi if (isinstance(o, praw.objects.Submission)...
-        #Fi else -> if not cur.fetchone()        
+        #Fi else -> if not cur.fetchone()
     #Fi bucle for o in results
 
     # Just en aquest moment, tambe s'actualitzen el nombre de publicacions de la taula subreddits
