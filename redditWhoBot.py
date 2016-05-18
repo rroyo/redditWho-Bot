@@ -6,7 +6,7 @@
 #   seva API.
 #
 #   Data creacio:           20/03/2016
-#   Última modificació:     25/04/2016
+#   Última modificació:     18/05/2016
 #
 #   @ Autor: Ramon Royo
 #            Treball de fi de grau (UOC)
@@ -25,7 +25,7 @@
 #   Stackoverflow - Multiples consultes
 #   http://stackoverflow.com
 #
-#   @  Subreddits i el nombre de subcriptors (per decidir quants en processo):
+#   @  Subreddits i el nombre de subcriptors:
 #
 #       1ers 100 ordenats per nombre de subscriptors
 #        >370.000 subscriptors
@@ -57,15 +57,15 @@ import time
 import datetime
 
 SUB_LIMIT = 2000000                         # Subreddits capturats com a maxim amb getSubreddits()
-UPDATE_SUBREDDITS = 2000                    # Quan ja s'han capturat TOTS els subreddits, tan sols s'actualitzen els subscriptors
-                                            # d'un nombre determinat dels que mes en tenen, aquesta variable estableix el limit.
-TOP_SUB_LIMIT = 500                         # Subreddits dels que s'extreuen publicacions
+TOP_SUB_LIMIT = 1500                        # Subreddits dels que s'extreuen publicacions
 
 MAX_SUBMISSIONS = 100                       # Limit de publicacions capturades en una sola peticio a l'API
 BELOW_MAX_SUBMISSIONS = 75                  # Es necessita capturar un minim de pubs per optimitzar el proces
 MIN_SCORE = 500                             # Puntuacio minima per incloure una publicacio a la BBDD
+                                            # IMPORTANT: SI ES MODIFICA, SOBRETOT CAP A BAIX (<500), CALDRÀ EXPLORAR
+                                            # NOVAMENT TOTS ELS SUBREDDITS. ELS PRIMERS 500 VAN COSTAR 22 DIES.
 
-UPDATE_WAIT = ( 3 * 24 * 3600 )             # Temps d'espera en segons, entre actualitzacions de la BBDD, 3 dies
+UPDATE_WAIT = ( 5 * 24 * 3600 )             # Temps d'espera en segons entre actualitzacions (> MAX_UPPER_OFFSET)
                                             # En producció, caldrà revisar aquest temps d'espera, per saber si és excessiu.
 WAIT_FRACTION = ( 2 * 3600 )                # Fraccio de temps que es tarda en enviar un missatge que anuncia que
                                             # s'està esperant per començar una nova iteració.
@@ -74,7 +74,10 @@ START_DATE = None                           # Data a partir de la qual comencar 
                                             #   None, capturara totes les publicacions des de l'inici del subreddit
                                             #   O be des de la data de l'ultima captura
                                             #   31536000 equival a un any en segons
-MAX_UPPER = None                            # Data final, fins on capturar publicacions (fixada dintre de start())
+MAX_UPPER = None                            # Data final fins on capturar publicacions (reestablida a start() abans de cada iteració)
+MAX_UPPER_OFFSET = ( 3 * 24 * 3600 )        # Offset de la data final (segons).  Per defecte, 3 dies abans del moment en que
+                                            # comença cada iteració, per donar temps a que les publicacions obtinguin vots.
+
 GET_SUBS_INTERVAL = 3600                    # Interval de temps inicial per capturar publicacions
 
 MAXIMUM_EXPANSION_MULTIPLIER = 2            # Limit segur per seleccionar intervals per sota
@@ -96,9 +99,7 @@ def start():
 
     while True:
         # Data i hora final fins on capturar publicacions. L'offset en segons.
-        # Per defecte, 2 dies abans del moment en que comença la iteració
-        # per donar temps a que les publicacions obtinguin vots.
-        MAX_UPPER = time.time() - ( 2 * 24 * 3600 )
+        MAX_UPPER = time.time() - MAX_UPPER_OFFSET
 
         (r, db) = utils.rwlogin()       # Connecta amb l'API i la BBDD
 
@@ -111,16 +112,9 @@ def start():
 
         print('Hi han {0} subreddits.'.format(storedSubreddits))
 
-        # Hi han més de 700.000 subreddits dintre de la llista que proporciona
-        # la funció get_popular_subreddits(), si es supera aquesta xifra,
-        # vol dir que s'ha emmagatzemat tots el que poden interessar.
+        # Actualització dels subreddits (~3h)
         while subredditsUpdated:
-            if (storedSubreddits < 700000):
-                # Omple la taula de subreddits (~3h de durada)
-                subredditsUpdated = getSubreddits(False, False, r, db)
-            else:
-                # Actualitza la taula de subreddits (~30min)
-                subredditsUpdated = getSubreddits(False, True, r, db)
+            subredditsUpdated = getSubreddits(False, False, r, db)
 
         # Explora publicacions dels subreddits seleccionats
         getSubmissions(False, r, db)
@@ -248,7 +242,7 @@ def getSubreddits(manual=True, updateTop=False, r=None, db=None):
 
     # Mostra el temps que ha tardat en total
     utils.printGetSubredditsStats(startTime, newSubs, updatedSubs)
-    return False                        # No hi ha problemes, es segueix amb la captura de le spublicacions
+    return False                        # No hi ha problemes, es segueix amb la captura de les publicacions
 
 def getSubmissions(manual=True, r=None, db=None):
     ''' Captura un nombre de subreddits determinat per TOP_SUB_LIMIT i ordenats per nombre

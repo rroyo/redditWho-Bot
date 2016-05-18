@@ -3,7 +3,7 @@
 #   Script amb diferents funcions utils i d'us comu.
 #
 #   Data creacio:           24/03/2016
-#   ultima modificacio:     15/04/2016
+#   ultima modificacio:     18/05/2016
 #
 #   @ Autor: Ramon Royo
 #            Treball de fi de grau (UOC)
@@ -331,7 +331,7 @@ def getLastDate(idint, db):
         return 0
 
 ###################################################################################
-# Les seguents funcions han estat extretes del seguent script:
+# Les seguents funcions han estat extretes del següent script:
 #
 # https://github.com/voussoir/reddit/blob/master/Prawtimestamps/timesearch.py
 #

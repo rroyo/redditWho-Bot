@@ -6,6 +6,7 @@
 *.sql
 logindata.py
 misc/
+.idea
 
 #############
 ## Windows detritus
